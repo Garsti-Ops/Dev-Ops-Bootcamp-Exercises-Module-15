@@ -1,0 +1,42 @@
+---
+- name: Create .jar from gradle app
+  hosts: localhost
+  tasks:
+    - name: Cleanup old builds
+      shell:
+        cmd: ./gradlew clean
+        chdir: ../../java-gradle-app/
+    - name: Compile gradle app
+      shell:
+        cmd: ./gradlew bootJar
+        chdir: ../../java-gradle-app/
+
+- name: Create user on staging server
+  hosts: gradle_staging
+  roles:
+    - create_user
+
+- name: Deploy to staging server
+  hosts: gradle_staging
+  tasks:
+    - name: Check if jar is running
+      shell: "ps -ef | grep java"
+      register: java_processes
+    - name: Stop app if its running
+      shell: "kill {{ java_processes.stdout_lines[0] }}"
+      when: java_processes | length > 0
+    - name: Find old jar
+      find:
+        path: /home/{{ user_name }}
+        patterns: "*.jar"
+        file_type: file
+      register: jar_files
+    - name: Delete old jar
+      shell: rm /home/{{ username} }/{{ jar_name }}
+      when: jar_files.files != []
+    - name: Copy new jar
+      copy:
+        src: ../../java-gradle-app/build/libs/{{ jar_name }}
+        dest: /home/{{ user_name }}/
+    - name: Start new jar
+      shell: jar -jar {{ jar_name }}

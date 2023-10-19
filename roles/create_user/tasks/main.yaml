@@ -1,0 +1,10 @@
+- name: Check if user exists
+  getent:
+    database: passwd
+    key: "{{ user_name }}"
+    fail_key: False
+
+- name: Create new linux user
+  user:
+    name: "{{ user_name }}"
+    groups: "{{ user_groups }}"

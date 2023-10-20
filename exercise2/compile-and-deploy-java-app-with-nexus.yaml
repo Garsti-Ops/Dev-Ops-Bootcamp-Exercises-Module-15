@@ -1,0 +1,54 @@
+---
+- name: Create .jar from gradle app
+  hosts: localhost
+  tasks:
+    - name: Cleanup old builds
+      shell:
+        cmd: ./gradlew clean
+        chdir: "{{ jar_file_path }}"
+    - name: Compile gradle app
+      shell:
+        cmd: ./gradlew bootJar
+        chdir: "{{ jar_file_path }}"
+    - name: Push to nexus
+      no_log: True
+      uri:
+        url: "{{ nexus_url }}/nexus/content/repositories/{{ nexus_repository }}/{{ jar_name }}"
+        method: PUT
+        src: "{{ jar_file_path }}"
+        user: "{{ nexus_user }}"
+        password: "{{ nexus_password }}"
+        force_basic_auth: yes
+        body_format: json
+        status_code:
+          - 201
+
+- name: Create user on staging server
+  hosts: gradle_staging
+  roles:
+    - create_user
+
+- name: Deploy to staging server
+  hosts: gradle_staging
+  tasks:
+    - name: Check if jar is running
+      shell: "ps -ef | grep java"
+      register: java_processes
+    - name: Stop app if its running
+      shell: "kill {{ java_processes.stdout_lines[0] }}"
+      when: java_processes | length > 0
+    - name: Find old jar
+      find:
+        path: /home/{{ user_name }}
+        patterns: "*.jar"
+        file_type: file
+      register: jar_files
+    - name: Delete old jar
+      shell: rm /home/{{ username }}/{{ jar_name }}
+      when: jar_files.files != []
+    - name: Copy new jar
+      copy:
+        src: ../../java-gradle-app/build/libs/{{ jar_name }}
+        dest: /home/{{ user_name }}/
+    - name: Start new jar
+      shell: jar -jar {{ jar_name }}

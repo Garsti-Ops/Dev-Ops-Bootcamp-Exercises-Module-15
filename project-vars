@@ -1,4 +1,7 @@
+# User for testing on remote server
 user_name: gradlestaging
+
+# Jar Informations
 jar_name: bootcamp-java-project-1.0-SNAPSHOT
 jar_file_path: ../../java-gradle-app/
 
@@ -7,3 +10,6 @@ nexus_url: #TODO: Fill
 nexus_repository: java-gradle-app
 nexus_user: nexus
 nexus_password: nexus
+
+# AWS
+aws_region: eu-central-1

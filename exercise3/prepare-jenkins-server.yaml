@@ -1,0 +1,80 @@
+---
+- name: Get EC2 IP
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Get IP from ec2
+      amazon.aws.ec2_instance_info:
+        region: "{{ aws_region }}"
+        filters:
+          "tag:Name": "jenkins-build-server-dev"
+      register: ec2_info
+
+- name: Install Jenkins and dependencies
+  hosts: "{{ hostvars['localhost']['ec2_result'].instances[0].public_ip_address }}"
+  become: Yes
+  tasks:
+    - name: Install Java
+      yum:
+        name: java-1.8.0-openjdk-devel
+        update_cache: yes
+        state: present
+    - name: Install Jenkins Repository
+      get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+    - name: Import RPM key
+      rpm_key:
+        state: present
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+    - name: Install daemonize dependency for Jenkins
+      command: amazon-linux-extras install epel -y
+    - name: Install /etc/yum.repos.d/jenkins.repo
+      yum:
+        name: jenkins
+        update_cache: yes
+        state: present
+    - name: Install docker
+      yum:
+        name: docker
+        update_cache: yes
+        state: present
+    - name: Check for nvm
+      find:
+        path: /home/ec2-user/.nvm/
+        file_type: directory
+      register: nvm_result
+    - name: Download nvm install script
+      get_url:
+        url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh
+        dest: /home/ec2-user/
+      when: nvm_result.size == 0
+    - name: Install nvm
+      shell:
+        cmd: /home/ec2-user/install.sh
+      when: nvm_result.size == 0
+    - name: Execute nvm installation
+      shell:
+        cmd: nvm install --lts
+        chdir: /home/ec2-user/
+
+- name: Start Jenkins
+  hosts: "{{ hostvars['localhost']['ec2_result'].instances[0].public_ip_address }}"
+  become: yes
+  tasks:
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        state: started
+    - name: Wait for startup
+      pause:
+        seconds: 10
+    - name: Check start up
+      command: netstat -plnt
+      register: app_status
+    - name: Print admin password to shell
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: jenkins_pwd
+    - debug: msg={{ jenkins_pwd['content'] }}
+

@@ -1,0 +1,26 @@
+---
+- name: Install Jenkins for Ubuntu
+  hosts: ubuntu_hosts
+  become: yes
+  tasks:
+    - name: Update apt
+      apt: update_cache=yes force_apt_get=yes
+    - name: Install Java 11
+      apt: name=openjdk-11-jdk
+    - name: Add repository
+      apt_repository:
+        repo: deb http://pkg.jenkins.io/debian-stable binary/
+        filename: /etc/apt/sources.list.d/jenkins
+        state: present
+    - name: Update apt
+      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+    - name: Install Jenkins and docker
+      apt:
+        name:
+          - jenkins
+          - docker.io
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+

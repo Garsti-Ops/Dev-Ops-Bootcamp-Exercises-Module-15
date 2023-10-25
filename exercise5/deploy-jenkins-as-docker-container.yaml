@@ -1,0 +1,29 @@
+---
+- name: Create Jenkins Container
+  hosts: docker_hosts
+  tasks:
+    - name: Create directory for jenkins data
+      file:
+        path: /home/root/jenkins_home
+        state: directory
+        mode: '0755'
+    - name: Create jenkins
+      docker_container:
+        name: jenkins
+        image: "jenkins:lts"
+        volumes:
+          - "/var/run/docker.sock:/var/run/docker.sock"
+          - "/user/local/bin/docker:/urs/bin/docker"
+          - "/home/root/jenkins_home:/var/jenkins_home"
+        ports:
+          - "8080:8080"
+          - "50000:50000"
+
+- name: Set docker permissions
+  hosts: docker_hosts
+  become: yes
+  tasks:
+    - name: Update docker permissions
+      file:
+        path: '/var/run/docker.sock'
+        mode: '666'

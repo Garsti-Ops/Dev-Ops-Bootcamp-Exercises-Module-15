@@ -1,0 +1,8 @@
+instance_name: awesome_instance
+key_name: aws-dev-env
+vpc_subnet_id: vpc-0db459312e05847f4
+instance_type: t2.micro
+security_group: default
+assign_public_ip: true
+image_id: ami-04376654933b081a7
+environment: dev

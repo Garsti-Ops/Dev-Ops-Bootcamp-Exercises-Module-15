@@ -1,0 +1,11 @@
+- name: Create app and database nodes
+  hosts: local
+  roles:
+    - role: create_ec2_instance
+      vars:
+        instance_name: application_server
+      register: application_node
+    - role: create_ec2_instance
+      vars:
+        instance_name: database_server
+      register: database_node

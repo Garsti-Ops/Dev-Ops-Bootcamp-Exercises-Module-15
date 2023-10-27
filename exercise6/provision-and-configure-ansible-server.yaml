@@ -1,0 +1,30 @@
+---
+- name: Create ansible control server, application server and database server
+  hosts: local
+  roles:
+    - role: create_ec2_instance
+      vars:
+        instance_name: ansible_control
+      register: control_node
+
+- name: Configure ansible control server
+  hosts: {{ control_node.results['instances'][0]['public_ip'] }}
+  become: yes
+  tasks:
+    - name: Install python and pip
+      yum:
+        update_cache: true
+        name:
+          - python3
+          - python3-pip
+        state: present
+    - name: Install ansible
+      shell: pip3 install ansible
+    - name: Copy playbook
+      copy:
+        src: ./provision-and-configure-app-and-db-server.yaml
+        dest: /home/ec2-user/ansible/provision-and-configure-app-and-db-server.yaml
+    - name: Copy roles
+      copy:
+        src: ../roles/create_ec2_instance
+        dest: /home/ec2-user/ansible/roles/create_ec2_instance

@@ -8,4 +8,40 @@
     - role: create_ec2_instance
       vars:
         instance_name: database_server
+        assign_public_ip: false
       register: database_node
+
+- name: Configure application node
+  hosts: {{ application_server.results['instances'][0]['public_ip'] }}
+  tasks:
+    - name: Install java
+      yum:
+        name:
+          - java-11-amazon-corretto-headless
+        state: present
+    - name: Copy jar to server
+      copy:
+        src: /home/cheider/workspace/devops-bootcamp/bootcamp-java-mysql/build/libs/bootcamp-java-mysql-project-1.0-SNAPSHOT.jar
+        dest: bootcamp-java-mysql-project-1.0-SNAPSHOT.jar
+
+- name: Configure database node
+  hosts: {{ database_node.results['instances'][0]['public_ip'] }}
+  become: yes
+  roles:
+    - { role: gerlingguy.mysql }
+
+
+- name: Start application
+  hosts: {{ application_server.results['instances'][0]['public_ip'] }}
+  tasks:
+    - name: Start jar
+      command: java jar
+      environment:
+        DB_USER: root
+        DB_PWD: root
+        DB_SERVER: "{{ database_node.results['instances'][0]['public_ip'] }}"
+        DB_NAME: my-db
+    - name: Check for running java app
+      command: ps aux | grep java
+      register: java_result
+    - debug: "{{msg=java_result}}"

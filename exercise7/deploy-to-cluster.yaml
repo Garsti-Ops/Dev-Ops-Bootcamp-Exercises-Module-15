@@ -1,0 +1,38 @@
+- name: Deploy manifests
+  hosts: localhost
+  tasks:
+    - name: Install docker
+      pip:
+        name: docker
+        state: present
+    - name: Docker login
+      docker_login:
+        registry_url: https://index.docker.io/v1/
+        username: "{{ docker_user }}"
+        password: "{{ docker_password }}"
+    - name: Create docker registry secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: kubernetes.io/dockerconfigjson
+          metadata:
+            name: my-registry-key
+            namespace: default
+          data:
+            .dockerconfigjson: "{{ lookup('file', '~/.docker/config.json' ) | b64encode }}"
+    - name: Deploy Ingress Controller
+      kubernetes.core.helm:
+        name: ingress-controller
+        release_namespace: ingress
+        create_namespace: true
+        chart_ref: ingress-nginx/ingress-nginx
+    - name: Deploy manifests
+      kubernetes.core.k8s:
+        definition: "{{ lookup('file', '{{ item }}') }}"
+        state: present
+        namespace: default
+      with_fileglob:
+        - "exercise7/kubernetes/*.yaml"
+
